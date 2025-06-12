@@ -1,32 +1,47 @@
 import requests
+from flask import Flask, request
+import random
+
 from birdcollection import BirdCollection
 
-api_endpoint = 'https://en.wikipedia.org/w/api.php'
+app = Flask(__name__)
 
-#gets image file name
-response = requests.get(api_endpoint, {
-	"action": "query",
-	"format": "json",
-	"prop": "images",
-	"titles": "rock pigeon",
-	"redirects": 1,
-	"formatversion": "2",
-	"imlimit": "1"
-}).json()
+website = """
+        <h1>Birdbook</h1>
+        """
+@app.route("/")
+def get_location_page():
 
-image_file = response['query']['pages'][0]['images'][0]['title']
-print(image_file)
+    get_location_form = """
+        <form action="/getlocation" method="post">
+             <input type='text' name='location'>
+             <input type='submit' value='Get Location'>
+        </form>
+    """
+    return website + get_location_form
 
-#gets image URL from wikipedia
-response = requests.get(api_endpoint, {
-	"action": "query",
-	"format": "json",
-	"prop": "imageinfo",
-	"titles": "File:Columba livia - 01.jpg",
-	"redirects": 1,
-	"formatversion": "2",
-	"iiprop": "url"
-}).json()
+@app.route("/getlocation", methods=["POST"])
+def run_birdbook():
+    region_code = request.form.get("location", "")
 
-image_url = response['query']['pages'][0]['imageinfo'][0]['url']
-print(image_url)
+    payload = {}
+    headers = {'X-eBirdApiToken': '7vj7h3qud0ln'}
+    response = requests.request("GET", f"https://api.ebird.org/v2/product/spplist/{region_code}", headers=headers,
+                                    data=payload)
+    species_code_list = response.json()
+
+    try:
+        birds_to_rate = BirdCollection(species_code_list, str(region_code), region_code)
+    except ValueError as e:
+        print(e)
+
+    bird1 = random.choice(birds_to_rate.get_birds())
+    bird2 = random.choice(birds_to_rate.get_birds())
+    return f"""
+    {website}
+    <img src= {bird1.get_image_url()}>
+    <img src= {bird2.get_image_url()}>
+    """
+
+if __name__ == "__main__":
+    app.run(host="localhost", debug=True)

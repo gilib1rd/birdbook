@@ -52,3 +52,6 @@ class Bird:
 
     def get_species_code(self):
         return self.species_code
+
+    def get_image_url(self):
+        return self.image_url
